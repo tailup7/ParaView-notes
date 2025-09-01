@@ -19,7 +19,7 @@ GUI上でもEditorを利用でき、下の画像のように "Tool" → "Python 
   <img src="pictures/editor2.png" height="220">
 </p>
 
-## 断面の可視化と断面積計算
+## 断面の可視化と断面積計算 (GUI)
 1. 3次元形状をimportする
 2. "slice"フィルタで切断したい位置、角度を調整(下図左)し、"Pipeline Browser"から"slice1"のみ表示してそれ以外はチェックを外す。"slice1"の"properties"を開き、"show plane"のチェックを外し、カメラの"Reset"を押して図形位置を画面中心に合わせる(下図右)。
 <p align="left">
@@ -37,3 +37,6 @@ GUI上でもEditorを利用でき、下の画像のように "Tool" → "Python 
 <p align="left">
   <img src="pictures/slice5.png" width="60%">
 </p>
+
+## 断面の可視化と断面積計算 (CLI)
+上記手順は直感的だが、切断面の決め方が決定的でない(一応、GUI上でもslice面の位置、角度共に数値で指定はできる)。また大量処理には向かない。例えば血管の中心線に沿って一定の間隔で垂直断面をとって、全体的な断面形状を知りたいときはCLIを用いる。
