@@ -76,7 +76,7 @@ GUI上でもEditorを利用でき、下の画像のように "Tool" → "Python 
     # 出力
     output.ShallowCopy(tri.GetOutput())
   ```
-+ これで閉曲線内部にのみ三角形メッシュが生成されるので、以降は上記手順と同じく、"cell size" → "Integrate Variables"
++ これで閉曲線内部にのみ三角形メッシュが生成されるので、以降は上記手順と同じく、"cell size" → "Integrate Variables" で正しく面積が計算できる。
 <p align="left">
   <img src="pictures/slice7.png" width="60%">
 </p>
