@@ -39,9 +39,11 @@ GUI上でもEditorを利用でき、下の画像のように "Tool" → "Python 
 </p>
 
 ### ※ 断面形状が凹形の場合 
-上記手順(Delauny2D)は凹型形状に対して、外部にまで三角形を張ってしまうことがある(下図)。 <br>
-
-別の方法として、vtkライブラリを使用し閉曲線内部に三角形メッシュを作る。
+上記手順 (Delauny2D) は凹型形状に対して、外部にまで三角形を張ってしまうことがある(下図)。 <br>
+<p align="left">
+  <img src="pictures/slice6.png" width="60%">
+</p>
+そこで別の方法として、vtkライブラリを使用し閉曲線内部に三角形メッシュを作る。
 + 上記 1.2.までは同じ
 + "slice1"を選択し、"Filters" → "Alphabetical" → "clean"。
 + "slice1"を選択し、"Filters" → "Programmable" → "Programmable Filter" で、"Properties" にある editorに以下のスクリプトを打ち、"Apply"
@@ -74,8 +76,10 @@ GUI上でもEditorを利用でき、下の画像のように "Tool" → "Python 
     # 出力
     output.ShallowCopy(tri.GetOutput())
   ```
-+ これで閉曲線内部に三角形メッシュが生成されるので、以降は上記手順と同じく、"cell size" → "IntegrateVatiables"
- 
++ これで閉曲線内部にのみ三角形メッシュが生成されるので、以降は上記手順と同じく、"cell size" → "IntegrateVatiables"
+<p align="left">
+  <img src="pictures/slice7.png" width="60%">
+</p>
 
 ## 断面の可視化と断面積計算 (CLI)
 GUI操作は直感的だが、切断面の決め方が決定的ではないし(一応、GUI上でもslice面の位置、角度共に数値で指定はできる)、大量処理には向かない。例えば血管の中心線に沿って一定の間隔で垂直断面をとって、全体的な断面形状を知りたいときはCLIを用いる。
