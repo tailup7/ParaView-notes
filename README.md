@@ -44,6 +44,7 @@ GUI上でもEditorを利用でき、下の画像のように "Tool" → "Python 
   <img src="pictures/slice6.png" width="60%">
 </p>
 そこで別の方法として、vtkライブラリを使用し閉曲線内部に三角形メッシュを作る。
+
 + 上記 1.2.までは同じ
 + "slice1"を選択し、"Filters" → "Alphabetical" → "clean"。
 + "slice1"を選択し、"Filters" → "Programmable" → "Programmable Filter" で、"Properties" にある editorに以下のスクリプトを打ち、"Apply"
