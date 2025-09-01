@@ -19,4 +19,10 @@ GUI上でもEditorを利用でき、下の画像のように "Tool" → "Python 
   <img src="pictures/editor2.png" width="35%">
 </p>
 
-## 血管断面の可視化と断面積計算
+## 断面の可視化と断面積計算
+1. 3次元形状をimportする
+2. "slice"フィルタで切断したい位置、角度を調整(下図左)し、"Pipeline Browser"から"slice1"のみ表示してそれ以外はチェックを外す。"slice1"の"properties"を開き、"show plane"のチェックを外し、カメラの"Reset"を押して図形位置を画面中心に合わせる(下図右)。
+
+3. "filter" → "alphabetical" → "Delauny2D" で閉曲線の内部に三角形メッシュを生成する(下図左)。"Pipeline Browser"で生成された"Delauny2D1"を選択し、"Filters" → "Alphabetical" → "Cell Size" を押す。生成された"CellSize1"を選択し、"Properties" → "Compute Area"のみにチェック入れ、他外す → 各三角形パッチの面積が可視化される(下図右)。
+   
+4. "Filters" → "Alphabetical" → "IntegrateVariables" → 開いたspread sheet で "showing" を "IntegrateVariable1", "Attribute" を "Cell Data"  にすると、"Area" のcolumnに総面積が表示される(下図)
