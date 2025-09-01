@@ -13,6 +13,10 @@ C:/Program Files/ParaView5.13.3/bin/
 ```
 $ pvpython your-method.py
 ```
-
+GUI上でもEditorを利用でき、下の画像のように "Tool" → "Python Script Editor" → コードを書く → "File" → "Run" で実行できる。
+<p align="center">
+  <img src="pictures/editor1.png" width="35%">
+  <img src="pictures/editor2.png" width="35%">
+</p>
 
 ## 血管断面の可視化と断面積計算
