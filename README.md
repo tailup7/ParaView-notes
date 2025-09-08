@@ -87,10 +87,10 @@ GUI操作は直感的だが、切断面の決め方が決定的ではないし(�
 
 ## GUI上で切断面を決め、中心線を使いCLIで正確に位置指定し垂直断面を切る
 <p align="center">
-  <img src="pictures/femoral-pulse.png" height="350">
-  <img src="pictures/femoral-pulse-slice1.gif" height="260">
-  <img src="pictures/femoral-pulse-slice2.gif" height="260">
-  <img src="pictures/femoral-pulse-slice3.gif" height="260">
+  <img src="pictures/femoral-pulse.png" height="300">
+  <img src="pictures/femoral-pulse-slice1.gif" height="220">
+  <img src="pictures/femoral-pulse-slice2.gif" height="220">
+  <img src="pictures/femoral-pulse-slice3.gif" height="220">
 </p>
 ↑ 大腿動脈において、拍動流を想定してpimpleFoamで数値解析を行い、断面流速分布を可視化したもの。<br>
 <br>
@@ -99,8 +99,8 @@ GUI操作は直感的だが、切断面の決め方が決定的ではないし(�
   <img src="pictures/paraview_howtoslice.png" width="60%">
 </p>
 
-+ ParaViewで形状(あるいは流体解析結果)と中心線をimportし、形状の透明度を下げつつ中心線点群も合わせて可視化。
-+ Find dataで適当にIDを打ちながら、切断したい位置の中心線点番号を確認する
++ ParaViewで形状(あるいは流体解析結果)と中心線をimportし、形状の透明度("opacity")を下げつつ中心線点群も合わせて可視化。
++ "Pipeline Brawser"で可視化している中心線を選択し"Find data" → 適当にIDを打ちながら、切断したい位置の中心線点番号を確認する
 + 切る場所を決めたら、"tool" → "python script editor" に以下を張り付けてrun
 + 指定した中心線の点{origin}で、隣接点から法線ベクトル{normal}を計算し、slice面が作成される
 
