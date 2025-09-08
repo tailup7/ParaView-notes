@@ -92,3 +92,75 @@ GUI操作は直感的だが、切断面の決め方が決定的ではないし(�
   <img src="pictures/femoral-pulse-slice2.gif" height="260">
   <img src="pictures/femoral-pulse-slice3.gif" height="260">
 </p>
+
++ ParaViewで形状(あるいは流体解析結果)と中心線をimportし、形状の透明度を下げつつ中心線点群も合わせて可視化。
++ Find dataで適当にIDを打ちながら、切断したい位置の中心線点番号を確認する
++ 切る場所を決めたら、"tool" → "python script editor" に以下を張り付けてrun
++ 指定した中心線の点{origin}で、隣接点から法線ベクトル{normal}を計算し、slice面が作成される
+
+  ```python
+    from paraview.simple import *
+    from paraview import servermanager
+    import math
+
+    # ---- SETTINGS (edit here) ----
+    CENTERLINE_NAME = "Transform1"   # !ここを変える!: TableToPoints の後に Transform しているならその名前
+    GEOM_NAME       = "cbs.foam"     # !ここを変える!: 解析ジオメトリ（表面/ボリューム）のソース名
+    POINT_ID        = 300            # !ここを変える!: 切断したい位置の中心線点番号
+
+    # ---- fetch sources ----
+    cl_src = FindSource(CENTERLINE_NAME)
+    if cl_src is None:
+        raise RuntimeError(f"Centerline source '{CENTERLINE_NAME}' not found.")
+    geom_src = FindSource(GEOM_NAME)
+    if geom_src is None:
+        raise RuntimeError(f"Geometry source '{GEOM_NAME}' not found.")
+
+    # Centerline points (client-side)
+    cl_vtk = servermanager.Fetch(cl_src)  # vtkDataSet
+    npts = cl_vtk.GetNumberOfPoints()
+    if npts < 3:
+        raise RuntimeError("Centerline needs at least 3 points for central difference.")
+
+    # clamp the point id in [0, npts-1]
+    pid = max(0, min(POINT_ID, npts-1))
+
+    # get neighbors for central difference
+    pid_minus = max(0, pid-1)
+    pid_plus  = min(npts-1, pid+1)
+
+    p0 = cl_vtk.GetPoint(pid)
+    pm = cl_vtk.GetPoint(pid_minus)
+    pp = cl_vtk.GetPoint(pid_plus)
+
+    # central difference tangent (pp - pm); this will be the slice plane NORMAL
+    tx = pp[0] - pm[0]
+    ty = pp[1] - pm[1]
+    tz = pp[2] - pm[2]
+    norm_len = math.sqrt(tx*tx + ty*ty + tz*tz)
+    if norm_len == 0.0:
+        raise RuntimeError("Zero-length tangent; check centerline ordering or duplicate points.")
+    nx, ny, nz = tx/norm_len, ty/norm_len, tz/norm_len
+
+    print(f"Using POINT_ID={pid}")
+    print(f"Origin  = ({p0[0]:.6f}, {p0[1]:.6f}, {p0[2]:.6f})")
+    print(f"Normal  = ({nx:.6f}, {ny:.6f}, {nz:.6f})")
+
+    # ---- create/update Slice ----
+    slice_name = f"Slice_at_ID_{pid}"
+    existing = FindSource(slice_name)
+
+    if existing is None:
+        slc = Slice(registrationName=slice_name, Input=geom_src)
+    else:
+        slc = existing
+        slc.Input = geom_src
+
+    # ParaView の Slice は "SliceType" に Plane を持ち、その Origin/Normal を設定
+    slc.SliceType = "Plane"
+    slc.SliceType.Origin = [p0[0], p0[1], p0[2]]
+    slc.SliceType.Normal = [nx, ny, nz]
+
+    Show(slc)
+    Render()
+  ```
