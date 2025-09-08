@@ -84,3 +84,11 @@ GUI上でもEditorを利用でき、下の画像のように "Tool" → "Python 
 
 ## 断面の可視化と断面積計算 (CLI)
 GUI操作は直感的だが、切断面の決め方が決定的ではないし(一応、GUI上でもslice面の位置、角度共に数値で指定はできる)、大量処理には向かない。例えば血管の中心線に沿って一定の間隔で垂直断面をとって、全体的な断面形状を知りたいときはCLIを用いる。
+
+## GUI上で切断面を決め、中心線を使いCLIで正確に位置指定し垂直断面を切る
+<p align="center">
+  <img src="pictures/femoral-pulse.png" height="350">
+  <img src="pictures/femoral-pulse-slice1.gif" height="260">
+  <img src="pictures/femoral-pulse-slice2.gif" height="260">
+  <img src="pictures/femoral-pulse-slice3.gif" height="260">
+</p>
