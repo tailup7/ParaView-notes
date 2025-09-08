@@ -14,7 +14,7 @@ C:/Program Files/ParaView5.13.3/bin/
 $ pvpython your-method.py
 ```
 GUI上でもEditorを利用でき、下の画像のように "Tool" → "Python Script Editor" → コードを書く → "File" → "Run" で実行できる。
-<p align="left">
+<p align="center">
   <img src="pictures/editor1.png" height="220">
   <img src="pictures/editor2.png" height="220">
 </p>
@@ -22,25 +22,25 @@ GUI上でもEditorを利用でき、下の画像のように "Tool" → "Python 
 ## 断面の可視化と断面積計算 (GUI)
 1. 3次元形状をimportする
 2. "slice"フィルタで切断したい位置、角度を調整(下図左)し、"Pipeline Browser"から"slice1"のみ表示してそれ以外はチェックを外す。"slice1"の"properties"を開き、"show plane"のチェックを外し、カメラの"Reset"を押して図形位置を画面中心に合わせる(下図右)。
-<p align="left">
+<p align="center">
   <img src="pictures/slice1.png" height="280">
   <img src="pictures/slice2.png" height="280">
 </p>
 3. "Filters" → "alphabetical" → "Delauny2D" で三角形メッシュを生成する。上の表示を"surface" → "surface with edges"にする(下図左)。
   "Pipeline Browser"で生成された"Delauny2D1"を選択し、"Filters" → "Alphabetical" → "Cell Size" を押す。
     生成された"CellSize1"を選択し、"Properties" → "Compute Area"のみにチェック入れ、他外す → 表示(上部タブ)の "solid color"を"Area"に → 各三角形パッチの面積が可視化される(下図右)。
-<p align="left">
+<p align="center">
   <img src="pictures/slice3.png" height="280">
   <img src="pictures/slice4.png" height="280">
 </p>
 4. "Filters" → "Alphabetical" → "Integrate Variables" → 開いたspread sheet で "showing" を "IntegrateVariable1", "Attribute" を "Cell Data"  にすると、"Area" のcolumnに総面積が表示される(下図)
-<p align="left">
+<p align="center">
   <img src="pictures/slice5.png" width="60%">
 </p>
 
 ### ※ 断面形状が凹形の場合 
 上記手順 (Delauny2D) は凹型形状に対して、外部にまで三角形を張ってしまうことがある(下図)。 <br>
-<p align="left">
+<p align="center">
   <img src="pictures/slice6.png" width="60%">
 </p>
 そこで別の方法として、vtkライブラリを使用し閉曲線内部に三角形メッシュを作る。
@@ -78,7 +78,7 @@ GUI上でもEditorを利用でき、下の画像のように "Tool" → "Python 
     output.ShallowCopy(tri.GetOutput())
   ```
 + これで閉曲線内部にのみ三角形メッシュが生成されるので、以降は上記手順と同じく、"cell size" → "Integrate Variables" で正しく面積が計算できる。
-<p align="left">
+<p align="center">
   <img src="pictures/slice7.png" width="60%">
 </p>
 
