@@ -19,6 +19,14 @@ GUI上でもEditorを利用でき、下の画像のように "Tool" → "Python 
   <img src="pictures/editor2.png" height="220">
 </p>
 
+## GUI上で点やセルを指定し、座標や場の値を確認する
+<p align="center">
+  <img src="pictures/check-coordinate-of-point1.png" width="400">
+  <img src="pictures/check-coordinate-of-point2.png" width="400">
+</p>
+
+場の値を持つ形状データ (ファイル形式はなんでもよく、例えば *.csv や *.vtk など) をインポートし可視化した後、画像左のように "Hover points on" や "Hover cells on" をクリックし、座標や値が知りたい点(セル) にカーソルを合わせると、画像右のように値が表示される。
+ 
 ## 断面の可視化と断面積計算 (GUI)
 1. 3次元形状をimportする
 2. "slice"フィルタで切断したい位置、角度を調整(下図左)し、"Pipeline Browser"から"slice1"のみ表示してそれ以外はチェックを外す。"slice1"の"properties"を開き、"show plane"のチェックを外し、カメラの"Reset"を押して図形位置を画面中心に合わせる(下図右)。
