@@ -20,6 +20,11 @@ GUI上でもEditorを利用でき、下の画像のように "Tool" → "Python 
 </p>
 
 ## OpenFOAMでの解析結果を、データ形式を変えて保存する (GUI)
+<p align="center">
+  <img src="pictures/save-data1.png" width="320">
+  <img src="pictures/save-data2.png" width="320">
+  <img src="pictures/save-data3.png" width="320">
+</p>
 OpenFOAMで流体解析を行った後、`*.foam` を ParaView にインポートすると、"properties" の中に画像左のような欄があり、デフォルトではすべてのセル及びセルが持つ値が可視化できるようになっている。このうち、自分が必要な情報だけ、データ構造( point data / cell data )やファイル形式(*.csv, *.vtk, *.msh, etc)を指定して保存することができる。自分が保存したい情報だけにチェックを入れて、"File" → "Save Data" で "Files of type" で保存したいデータ形式を選択し、画像右のような保存設定のポップアップ(値の有効数字や、点群データにするかセルデータにするか、など)が出るのでお好みで変更してから保存する。<br>
 例えば、WSS(壁面せん断応力) のみを点群データとして保存したい場合、画像中央のように "WALL" patch のみ選択し、そのセルが持つ値のうち　"WSS" のみにチェックを入れて出力する。このように保存したデータを再度可視化したものが右下の画像。 
 
