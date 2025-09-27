@@ -216,17 +216,21 @@ GUI操作は直感的だが、切断面の決め方が決定的ではないし(�
 ``` python
 # 中心線点群のIDを指定し、その点において中心線に対する垂直な断面を切り、中心線方向の速度成分をカラーマップで表現し、断面に沿う方向の速度成分を矢印で表現するpvpythonコード。
 # 中心線方向の速度成分は、中心線番号が大きくなる方向が正になる。(中心線.csvが、INLET → OULET の方向順で記述されていることを想定している)
+# Slice平面が複数箇所で交わる場合でも、中心線点に最も近い断面のみを可視化する
+
 from paraview.simple import *
 from paraview import servermanager
 import math
 
-# ---- SETTINGS (edit here) ----
+# ---- SETTINGS (ここを変更する) ----
 CENTERLINE_NAME = "Transform1"   # Centerline のソース名（TableToPoints→Transform後など）
 GEOM_NAME       = "read.foam"    # OpenFOAM（または他）結果のソース名
 POINT_ID        = 280            # 切断位置の中心線 点番号
+
 # グリフ（ベクトル）の見やすさ調整
 GLYPH_STRIDE    = 5              # 矢印表示の間引き
 GLYPH_SCALE     = 0.01           # 矢印のスケール
+
 SAVE_SCREENSHOT = False          # 画像保存したい場合 True
 OUTFILE         = "slice_axial_inplane.png"
 
@@ -285,9 +289,40 @@ slc.SliceType = "Plane"
 slc.SliceType.Origin = [p0[0], p0[1], p0[2]]
 slc.SliceType.Normal = [nx, ny, nz]
 
+# === 断面のうち中心線点p0に最も近い連結成分だけを抽出 ===
+conn_name = f"Conn_at_ID_{pid}"
+conn = FindSource(conn_name)
+if conn is None:
+    conn = Connectivity(registrationName=conn_name, Input=slc)
+else:
+    conn.Input = slc
+
+# ParaView のバージョン差を吸収して「Closest Point Region」を使う
+# 新しめの版では ExtractionMode='Closest Point Region' と ClosestPoint 指定
+# 旧版では 'Extract Closest Point Region' または SeedType='Point Seed'
+ok = False
+for mode in ('Closest Point Region', 'Extract Closest Point Region'):
+    try:
+        conn.ExtractionMode = mode
+        conn.ClosestPoint = [p0[0], p0[1], p0[2]]
+        ok = True
+        break
+    except Exception:
+        pass
+if not ok:
+    try:
+        conn.ExtractionMode = 'Extract Regions'
+        conn.SeedType = 'Point Seed'
+        conn.SeedType.Point1 = [p0[0], p0[1], p0[2]]
+        ok = True
+    except Exception:
+        pass
+if not ok:
+    raise RuntimeError("Connectivity filter does not support 'closest point' in this ParaView version.")
+
 # ---- Axial scalar (U·n) と In-plane vector (U - (U·n)n) を作る ----
 # 1) Calculator: U_axial = (U · n)  (符号付き)
-calc_ax = Calculator(registrationName=f"Calc_Uax_{pid}", Input=slc)
+calc_ax = Calculator(registrationName=f"Calc_Uax_{pid}", Input=conn)
 calc_ax.ResultArrayName = "U_axial"
 calc_ax.Function = f"(U_X*{nx} + U_Y*{ny} + U_Z*{nz})"
 
@@ -323,8 +358,8 @@ glyph.Stride           = GLYPH_STRIDE
 glyph.ScaleFactor      = GLYPH_SCALE
 
 gdisp = Show(glyph, view)
-ColorBy(gdisp, None)                           
-gdisp.SetScalarBarVisibility(view, False)      
+ColorBy(gdisp, None)
+gdisp.SetScalarBarVisibility(view, False)
 gdisp.AmbientColor = [0.0, 0.0, 0.0]
 gdisp.DiffuseColor = [0.0, 0.0, 0.0]
 gdisp.Specular = 0.0
