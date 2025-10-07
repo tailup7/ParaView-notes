@@ -190,7 +190,7 @@ GUI操作は直感的だが、切断面の決め方が決定的ではないし(�
     Render()
   ```
 
-## 断面流速の可視化
+## 断面流速の可視化 (定常流)
 
 <p align="center">
   <img src="pictures/AxialAndOnSliceFlow.png" width="100%">
@@ -201,7 +201,7 @@ GUI操作は直感的だが、切断面の決め方が決定的ではないし(�
 + 断面に垂直な方向の速度成分(カラーマップ)は絶対値ではなく符号ありで表現する(逆流していれば負の値をとる)
 + 断面の向き(上下左右)が分かるようにする(makeSurfaceLine.py)。
 + (よく論文で使われている色合いを参考に、ParaView で カラーマップは color map editor の presets で "All" → "Blue To Red Rainbow", 矢印は黒にしている。)
-+ 下記のスクリプトは、simpleFoam 等の解析で流れ場が定常に至った後のOpenFOAM出力を前提にしており、pimpleFoam等の非定常解析にはまだ対応していない。
++ 下記のスクリプトは、simpleFoam 等の解析で流れ場が定常に至った後のOpenFOAM出力を前提にしており、pimpleFoam等の非定常解析には対応していない
 
 <br>
 
@@ -371,3 +371,231 @@ if SAVE_SCREENSHOT:
     SaveScreenshot(OUTFILE, view, TransparentBackground=False, CompressionLevel='5')
     print(f"Saved screenshot: {OUTFILE}")
 ```
+
+
+# 断面流速の可視化(非定常流)
+
+
+``` python
+# 中心線点群のIDを指定し、その点において中心線に対する垂直な断面を切り、中心線方向の速度成分をカラーマップで表現し、断面に沿う方向の速度成分を矢印で表現
+# pimpleFoam等の非定常流れで、各時刻の流れ場に対し上記処理を行い アニメーションにできる pvpythonコード。
+# 中心線方向の速度成分は、中心線番号が大きくなる方向が正になる。(中心線.csvが、INLET → OULET の方向順で記述されていることを想定している)
+# Slice平面が複数箇所で交わる場合でも、中心線点に最も近い断面のみを可視化する
+
+from paraview.simple import *
+from paraview import servermanager
+import math, os
+
+# ========= SETTINGS =========
+CENTERLINE_NAME = "Transform1"    # 中心線ソース名
+GEOM_NAME       = "read.foam"     # OpenFOAM リーダ名
+POINT_ID        = 415             # 切断する中心線の点ID
+
+# 矢印密度とサイズ
+GLYPH_STRIDE_N = 5                # Every Nth Point
+TARGET_MAX_ARROW_LEN = 0.0015      # paraView上での矢印の長さのスケーリング（適切に調整）
+
+# 出力
+SAVE_MOVIE     = False
+MOVIE_FILENAME = "slice_axial_inplane.mp4"
+PNG_DIR        = "frames_slice"
+IMAGE_W, IMAGE_H = 1600, 1200
+FRAME_RATE = 20
+
+# --- カラーマップのレンジを手動固定。None なら全時刻のデータから自動決定 ---
+FIXED_CLIM = (-0.429, 1.291)
+# ============================
+
+# ---- 取得 ----
+cl_src = FindSource(CENTERLINE_NAME)
+if cl_src is None:
+    raise RuntimeError(f"Centerline source '{CENTERLINE_NAME}' not found.")
+geom_src = FindSource(GEOM_NAME)
+if geom_src is None:
+    raise RuntimeError(f"Geometry source '{GEOM_NAME}' not found.")
+
+# ---- 中心線の接線ベクトル（中心差分）----
+cl_vtk = servermanager.Fetch(cl_src)
+npts = cl_vtk.GetNumberOfPoints()
+if npts < 3:
+    raise RuntimeError("Centerline needs at least 3 points.")
+pid = max(0, min(POINT_ID, npts-1))
+pm = cl_vtk.GetPoint(max(0, pid-1))
+pp = cl_vtk.GetPoint(min(npts-1, pid+1))
+p0 = cl_vtk.GetPoint(pid)
+tx, ty, tz = pp[0]-pm[0], pp[1]-pm[1], pp[2]-pm[2]
+nlen = math.sqrt(tx*tx + ty*ty + tz*tz)
+if nlen == 0:
+    raise RuntimeError("Zero-length tangent; check centerline.")
+nx, ny, nz = tx/nlen, ty/nlen, tz/nlen
+print(f"[INFO] POINT_ID={pid}")
+print(f"[INFO] Origin=({p0[0]:.6f},{p0[1]:.6f},{p0[2]:.6f})  Normal=({nx:.6f},{ny:.6f},{nz:.6f})")
+
+# ---- Slice（中心線に直交）----
+slice_name = f"Slice_at_ID_{pid}"
+slc = FindSource(slice_name) or Slice(registrationName=slice_name, Input=geom_src)
+slc.Input = geom_src
+slc.SliceType = "Plane"
+slc.SliceType.Origin = [p0[0], p0[1], p0[2]]
+slc.SliceType.Normal = [nx, ny, nz]
+
+# ---- 点データ化（U を POINT_DATA へ）＆ CellData を通さない準備 ----
+c2p = CellDatatoPointData(registrationName=f"C2P_{pid}", Input=slc)
+c2p.PassCellData = 0  # CellData はここで捨てる
+
+# ---- 最寄り領域のみ抽出（Connectivity）----
+conn_name = f"Conn_at_ID_{pid}"
+conn = FindSource(conn_name) or Connectivity(registrationName=conn_name, Input=c2p)
+conn.Input = c2p
+# ★ これが重要：RegionId を作らない（警告の根本原因を断つ）
+try:
+    conn.ColorRegions = 0
+except Exception:
+    pass  # プロパティが無い版でも後段で CellData は全部落とすためOK
+
+ok = False
+for mode in ('Closest Point Region', 'Extract Closest Point Region'):
+    try:
+        conn.ExtractionMode = mode
+        conn.ClosestPoint = [p0[0], p0[1], p0[2]]
+        ok = True
+        break
+    except Exception:
+        pass
+if not ok:
+    try:
+        conn.ExtractionMode = 'Extract Regions'
+        conn.SeedType = 'Point Seed'
+        conn.SeedType.Point1 = [p0[0], p0[1], p0[2]]
+        ok = True
+    except Exception:
+        pass
+if not ok:
+    raise RuntimeError("Connectivity 'closest point' unsupported on this ParaView.")
+
+# ---- PassArrays で POINT_DATA のみ通す（保険）----
+pas = PassArrays(registrationName=f"PassPts_{pid}", Input=conn)
+pas.PointDataArrays = ['U']   # 必要に応じて追加
+pas.CellDataArrays  = []      # CellData を完全に除去
+try:
+    pas.FieldDataArrays = []  # 5.13 にある場合は明示的に空に
+except Exception:
+    pass
+
+# ---- U·n と 面内速度 ----
+calc_ax = Calculator(registrationName=f"Calc_Uax_{pid}", Input=pas)
+calc_ax.ResultArrayName = "U_axial"
+calc_ax.Function = f"(U_X*{nx} + U_Y*{ny} + U_Z*{nz})"
+
+calc_ip = Calculator(registrationName=f"Calc_Uin_{pid}", Input=calc_ax)
+calc_ip.ResultArrayName = "U_inplane"
+calc_ip.Function = (
+    f"(U_X-((U_X*{nx}+U_Y*{ny}+U_Z*{nz})*{nx}))*iHat + "
+    f"(U_Y-((U_X*{nx}+U_Y*{ny}+U_Z*{nz})*{ny}))*jHat + "
+    f"(U_Z-((U_X*{nx}+U_Y*{ny}+U_Z*{nz})*{nz}))*kHat"
+)
+
+# ---- ビューと表示 ----
+view = GetActiveViewOrCreate('RenderView')
+view.ViewSize = [IMAGE_W, IMAGE_H]
+
+disp_slice = Show(calc_ip, view)
+ColorBy(disp_slice, ('POINT_DATA', 'U_axial'))
+disp_slice.SetScalarBarVisibility(view, True)
+disp_slice.Opacity = 0.98
+
+glyph = Glyph(registrationName=f"Glyph_inplane_{pid}", Input=calc_ip, GlyphType='Arrow')
+glyph.OrientationArray = ['POINT_DATA', 'U_inplane']
+glyph.ScaleArray       = ['POINT_DATA', 'U_inplane']
+glyph.GlyphMode        = 'Every Nth Point'
+glyph.Stride           = GLYPH_STRIDE_N
+gdisp = Show(glyph, view)
+ColorBy(gdisp, None)
+gdisp.AmbientColor = [0.0, 0.0, 0.0]
+gdisp.DiffuseColor = [0.0, 0.0, 0.0]
+gdisp.Specular = 0.0
+gdisp.SetScalarBarVisibility(view, False)
+
+Hide(geom_src, view)
+
+# ---- 時間設定 ----
+scene = GetAnimationScene()
+scene.UpdateAnimationUsingDataTimeSteps()
+tk = GetTimeKeeper()
+times = list(getattr(tk, "TimestepValues", [])) or [0.0]
+
+# ---- 全タイムステップのレンジを収集して固定 ----
+def array_range_over_time(src, array_name, association='POINT_DATA', component='scalars_or_magnitude'):
+    if association not in ('POINT_DATA', 'CELL_DATA'):
+        raise ValueError("association must be POINT_DATA or CELL_DATA")
+    get_info = (src.GetPointDataInformation if association=='POINT_DATA'
+                else src.GetCellDataInformation)
+    if component in ('magnitude', 'scalars_or_magnitude'):
+        comp_idx = -1
+    elif component == 'scalars':
+        comp_idx = 0
+    elif isinstance(component, int):
+        comp_idx = component
+    else:
+        comp_idx = -1
+    gmin, gmax = float('inf'), float('-inf')
+    for t in times:
+        src.UpdatePipeline(time=t)
+        ai = get_info().GetArray(array_name)
+        if ai is None:
+            continue
+        rng = ai.GetRange(comp_idx)
+        if rng is None:
+            continue
+        gmin = min(gmin, rng[0])
+        gmax = max(gmax, rng[1])
+    if gmin == float('inf'):
+        raise RuntimeError(f"Array '{array_name}' not found on {association}.")
+    return gmin, gmax
+
+# 1) U_axial の色レンジ
+if FIXED_CLIM is None:
+    vmin_ax, vmax_ax = array_range_over_time(calc_ip, 'U_axial', 'POINT_DATA', 'scalars')
+else:
+    vmin_ax, vmax_ax = FIXED_CLIM
+if vmax_ax <= vmin_ax:
+    raise RuntimeError("Invalid color range for U_axial.")
+lut = GetColorTransferFunction('U_axial')
+pwf = GetOpacityTransferFunction('U_axial')
+lut.RescaleTransferFunction(vmin_ax, vmax_ax)
+pwf.RescaleTransferFunction(vmin_ax, vmax_ax)
+
+# 2) 面内速度の最大値で矢印長を決定
+_, vmax_inplane = array_range_over_time(calc_ip, 'U_inplane', 'POINT_DATA', 'magnitude')
+if vmax_inplane <= 0:
+    vmax_inplane = 1.0
+glyph.ScaleFactor = TARGET_MAX_ARROW_LEN / vmax_inplane
+
+# ---- カメラ＆出力 ----
+view.ResetCamera()
+view.Update()
+Render()
+
+if SAVE_MOVIE:
+    try:
+        print(f"[INFO] Saving animation -> {MOVIE_FILENAME}")
+        SaveAnimation(
+            filename=MOVIE_FILENAME,
+            viewOrLayout=view,
+            FrameRate=FRAME_RATE,
+            ImageResolution=[IMAGE_W, IMAGE_H],
+        )
+        print("[INFO] Movie saved.")
+    except Exception as e:
+        print(f"[WARN] SaveAnimation failed ({e}), fallback to PNG frames.")
+        if not os.path.isdir(PNG_DIR):
+            os.makedirs(PNG_DIR, exist_ok=True)
+        SaveAnimation(
+            filename=os.path.join(PNG_DIR, "frame.png"),
+            viewOrLayout=view,
+            FrameRate=FRAME_RATE,
+            ImageResolution=[IMAGE_W, IMAGE_H],
+        )
+        print(f"[INFO] PNG frames saved under: {PNG_DIR}")
+```
+
