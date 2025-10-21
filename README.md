@@ -36,7 +36,11 @@ OpenFOAMで流体解析を行った後、`*.foam` を ParaView にインポー�
 </p>
 
 場の値を持つ形状データ (ファイル形式はなんでもよく、例えば *.csv や *.vtk など) をインポートし可視化した後、画像左のように "Hover points on" や "Hover cells on" をクリックし、座標や値が知りたい点(セル) にカーソルを合わせると、画像右のように値が表示される。
- 
+
+## STLファイルのメッシュ妥当性の確認
++ 検証したいSTLファイルを import する
++ "Filters" → "Alphabetical" → "Generates surface normal"
+
 ## 断面の可視化と断面積計算 (GUI)
 1. 3次元形状をimportする
 2. "slice"フィルタで切断したい位置、角度を調整(下図左)し、"Pipeline Browser"から"slice1"のみ表示してそれ以外はチェックを外す。"slice1"の"properties"を開き、"show plane"のチェックを外し、カメラの"Reset"を押して図形位置を画面中心に合わせる(下図右)。
