@@ -604,6 +604,9 @@ if SAVE_MOVIE:
 ```
 
 # 散逸関数の体積積分(total df_loss)
+1. 計算したい結果を`.foam`で可視化
+2. pipeline Browserで対象の`.foam`を選択, 最終時刻を表示
+3. Python Script Editorで以下を張り付けてrun
 ``` bash
 from paraview.simple import *
 from paraview import print_info, print_error
