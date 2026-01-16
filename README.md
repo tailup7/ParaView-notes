@@ -603,3 +603,122 @@ if SAVE_MOVIE:
         print(f"[INFO] PNG frames saved under: {PNG_DIR}")
 ```
 
+# 散逸関数の体積積分(total df_loss)
+``` bash
+from paraview.simple import *
+from paraview import print_info, print_error
+
+import numpy as np
+
+# vtk (ParaView同梱)
+from vtkmodules.util.numpy_support import vtk_to_numpy
+from vtkmodules.vtkFiltersCore import vtkPointDataToCellData
+from vtkmodules.vtkFiltersVerdict import vtkCellSizeFilter
+from vtkmodules.vtkCommonDataModel import vtkMultiBlockDataSet
+
+print_info("=== dissipation volume integral script started ===")
+
+src = GetActiveSource()
+if src is None:
+    print_error("No active source. Pipeline Browserで体積メッシュのソースを選んでください。")
+    raise SystemExit
+
+# 最終時刻へ（可能な場合）
+scene = GetAnimationScene()
+scene.UpdateAnimationUsingDataTimeSteps()
+times = list(scene.TimeKeeper.TimestepValues)
+if times:
+    t = times[-1]
+    scene.TimeKeeper.Time = t
+    print_info(f"Using latestTime = {t}")
+else:
+    t = None
+    print_info("No timestep info found; using current time.")
+
+UpdatePipeline(time=t, proxy=src)
+
+data = servermanager.Fetch(src)
+if data is None:
+    print_error("Fetch returned None.")
+    raise SystemExit
+
+# ---- MultiBlock対応：配列を含むブロックを集める ----
+def iter_datasets(d):
+    # yield vtkDataSet objects from possible multiblock structure
+    if isinstance(d, vtkMultiBlockDataSet):
+        it = d.NewIterator()
+        it.UnRegister(None)
+        it.InitTraversal()
+        while not it.IsDoneWithTraversal():
+            obj = it.GetCurrentDataObject()
+            if obj is not None:
+                yield obj
+            it.GoToNextItem()
+    else:
+        yield d
+
+targets = []
+for ds in iter_datasets(data):
+    # cell or point array に dissipationFunctionPhi があるものを対象に
+    pd = ds.GetPointData()
+    cd = ds.GetCellData()
+    has = (pd and pd.HasArray("dissipationFunctionPhi")) or (cd and cd.HasArray("dissipationFunctionPhi"))
+    if has and ds.GetNumberOfCells() > 0:
+        targets.append(ds)
+
+if not targets:
+    # デバッグ用：最初の1つだけ配列名を表示
+    first = next(iter(iter_datasets(data)), None)
+    if first is None:
+        print_error("No datasets found inside fetched object.")
+        raise SystemExit
+
+    pd = first.GetPointData()
+    cd = first.GetCellData()
+    pnames = [pd.GetArrayName(i) for i in range(pd.GetNumberOfArrays())] if pd else []
+    cnames = [cd.GetArrayName(i) for i in range(cd.GetNumberOfArrays())] if cd else []
+    print_error("dissipationFunctionPhi が見つかりません。")
+    print_info(f"Example PointData arrays: {pnames}")
+    print_info(f"Example CellData arrays : {cnames}")
+    raise SystemExit
+
+print_info(f"Found {len(targets)} dataset block(s) containing dissipationFunctionPhi.")
+
+total_W = 0.0
+
+for ds in targets:
+    # ---- PointDataならCellDataへ変換（積分はセル体積が必要）----
+    if ds.GetCellData().HasArray("dissipationFunctionPhi"):
+        ds_cell = ds
+    else:
+        p2c = vtkPointDataToCellData()
+        p2c.SetInputData(ds)
+        p2c.PassPointDataOff()
+        p2c.Update()
+        ds_cell = p2c.GetOutput()
+
+    # ---- セル体積を計算 ----
+    cs = vtkCellSizeFilter()
+    cs.SetInputData(ds_cell)
+    cs.SetComputeVolume(True)
+    cs.SetComputeArea(False)
+    cs.SetComputeLength(False)
+    cs.Update()
+    out = cs.GetOutput()
+
+    phi_vtk = out.GetCellData().GetArray("dissipationFunctionPhi")
+    vol_vtk = out.GetCellData().GetArray("Volume")
+
+    if phi_vtk is None or vol_vtk is None:
+        print_error("必要な配列(dissipationFunctionPhi or Volume)が取得できませんでした。")
+        raise SystemExit
+
+    phi = vtk_to_numpy(phi_vtk).astype(np.float64)   # W/m^3
+    vol = vtk_to_numpy(vol_vtk).astype(np.float64)   # m^3
+
+    total_W += float(np.sum(phi * vol))
+
+print_info(f"Total dissipation [W] = {total_W}")
+print_info("=== script finished ===")
+```
+
