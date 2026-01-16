@@ -607,6 +607,7 @@ if SAVE_MOVIE:
 1. 計算したい結果を`.foam`で可視化
 2. pipeline Browserで対象の`.foam`を選択, 最終時刻を表示
 3. Python Script Editorで以下を張り付けてrun
+4. **結果を "View" → "output messages" から確認する**
 ``` bash
 from paraview.simple import *
 from paraview import print_info, print_error
